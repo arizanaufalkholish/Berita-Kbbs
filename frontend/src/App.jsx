@@ -19,6 +19,7 @@ import CalendarPage from "./pages/CalendarPage";
 import ContactPage from "./pages/ContactPage";
 import DonasiPage from "./pages/DonasiPage";
 import AuthPage from "./pages/AuthPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import AboutPage from "./pages/AboutPage";
 import LatarBelakangPage from "./pages/LatarBelakangPage";
 import KebijakanPage from "./pages/KebijakanPage";
@@ -34,6 +35,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import ManageArticles from "./pages/admin/ManageArticles";
 import ArticleEditor from "./pages/admin/ArticleEditor";
+import ManageComments from "./pages/admin/ManageComments";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -69,6 +71,7 @@ export default function App() {
             <Route path="/kontak" element={<ContactPage />} />
             <Route path="/donasi" element={<DonasiPage />} />
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/latar-belakang" element={<LatarBelakangPage />} />
             <Route path="/kebijakan-privasi" element={<KebijakanPage />} />
@@ -86,6 +89,7 @@ export default function App() {
               <Route path="/admin/articles" element={<ManageArticles />} />
               <Route path="/admin/articles/create" element={<ArticleEditor />} />
               <Route path="/admin/articles/edit/:id" element={<ArticleEditor />} />
+              <Route path="/admin/comments" element={<ManageComments />} />
             </Route>
 
             <Route path="*" element={<NotFoundPage />} />

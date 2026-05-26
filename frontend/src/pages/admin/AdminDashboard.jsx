@@ -21,11 +21,11 @@ export default function AdminDashboard() {
             <p className="text-sm text-surface-500 mt-2">Buat, edit, dan hapus artikel berita</p>
           </Link>
           
-          <div className="bg-surface-100 p-6 rounded-lg border border-surface-200 flex flex-col items-center justify-center text-center opacity-70 cursor-not-allowed">
-            <span className="text-4xl mb-3">💬</span>
-            <h2 className="text-lg font-bold text-surface-900">Komentar</h2>
-            <p className="text-sm text-surface-500 mt-2">Segera Hadir</p>
-          </div>
+          <Link to="/admin/comments" className="bg-white p-6 rounded-lg border border-surface-200 shadow-sm hover:shadow-md transition-shadow flex flex-col items-center justify-center text-center group">
+            <span className="text-4xl mb-3 group-hover:scale-110 transition-transform">💬</span>
+            <h2 className="text-lg font-bold text-surface-900 group-hover:text-primary-600">Komentar</h2>
+            <p className="text-sm text-surface-500 mt-2">Moderasi komentar masuk</p>
+          </Link>
 
           <div className="bg-surface-100 p-6 rounded-lg border border-surface-200 flex flex-col items-center justify-center text-center opacity-70 cursor-not-allowed">
             <span className="text-4xl mb-3">📂</span>

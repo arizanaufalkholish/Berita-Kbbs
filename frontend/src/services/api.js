@@ -52,6 +52,9 @@ export const apiCreateComment = (articleId, name, email, content) =>
     method: "POST",
     body: JSON.stringify({ article_id: articleId, author_name: name, author_email: email, content }),
   });
+export const apiGetAdminComments = () => fetchAPI("/comments");
+export const apiUpdateCommentStatus = (id, status) => fetchAPI(`/comments/${id}`, { method: "PUT", body: JSON.stringify({ status }) });
+export const apiDeleteComment = (id) => fetchAPI(`/comments/${id}`, { method: "DELETE" });
 
 // Auth API
 export const apiLogin = (email, password) => 
@@ -65,3 +68,8 @@ export const apiRegister = (name, email, password) =>
     method: "POST",
     body: JSON.stringify({ name, email, password }),
   });
+
+export const apiLogout = () => fetchAPI("/logout", { method: "POST" });
+export const apiGetMe = () => fetchAPI("/me");
+export const apiForgotPassword = (email) => fetchAPI("/forgot-password", { method: "POST", body: JSON.stringify({ email }) });
+export const apiResetPassword = (token, password) => fetchAPI("/reset-password", { method: "POST", body: JSON.stringify({ token, password }) });

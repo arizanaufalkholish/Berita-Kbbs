@@ -332,6 +332,10 @@ $routes = [
         '/api/categories' => 'getCategories',
         '/api/trending' => 'getTrending',
         '/api/sitemap' => 'getSitemap',
+        '/api/sitemap\.xml' => 'getSitemapXml',
+        '/api/rss\.xml' => 'getRssXml',
+        '/api/me' => 'getCurrentUser',
+        '/api/comments' => 'getComments',
     ],
     'POST' => [
         '/api/articles' => 'createArticle',
@@ -342,12 +346,15 @@ $routes = [
         '/api/register' => 'registerUser',
         '/api/upload' => 'uploadImage',
         '/api/forgot-password' => 'forgotPassword',
+        '/api/reset-password' => 'resetPassword',
     ],
     'PUT' => [
         '/api/articles/(\d+)' => 'updateArticle',
+        '/api/comments/(\d+)' => 'updateCommentStatus',
     ],
     'DELETE' => [
         '/api/articles/(\d+)' => 'deleteArticle',
+        '/api/comments/(\d+)' => 'deleteComment',
     ],
 ];
 
@@ -385,22 +392,23 @@ if ($handler && function_exists($handler)) {
 function healthCheck() {
     $status = ['status' => 'ok', 'timestamp' => date('c')];
     
-    // Test database connection
     try {
         $db = Database::getInstance()->getConnection();
         $stmt = $db->query('SELECT 1');
-        $status['database'] = 'connected';
-        
-        // Check if tables exist
-        $stmt = $db->query("SHOW TABLES LIKE 'articles'");
-        $status['tables'] = $stmt->rowCount() > 0 ? 'ready' : 'not_imported';
+        if (getenv('APP_ENV') !== 'production') {
+            $status['database'] = 'connected';
+            $stmt = $db->query("SHOW TABLES LIKE 'articles'");
+            $status['tables'] = $stmt->rowCount() > 0 ? 'ready' : 'not_imported';
+        }
     } catch (Exception $e) {
-        $status['database'] = 'error';
-        $status['db_error'] = APP_ENV === 'development' ? $e->getMessage() : 'Connection failed';
         $status['status'] = 'degraded';
+        if (getenv('APP_ENV') !== 'production') {
+            $status['database'] = 'error';
+            $status['db_error'] = $e->getMessage();
+        }
     }
     
-    echo json_encode(['status' => $status['status'], 'timestamp' => $status['timestamp'], 'database' => $status['database'], 'tables' => $status['tables']], JSON_PRETTY_PRINT);
+    echo json_encode($status, JSON_PRETTY_PRINT);
 }
 
 function getArticles() {
@@ -1136,4 +1144,163 @@ function uploadImage() {
         http_response_code(500);
         echo json_encode(['error' => 'Failed to move uploaded file']);
     }
+}
+
+function getCurrentUser() {
+    $authHeader = getAuthHeader();
+    if (strpos($authHeader, 'Bearer ') !== 0) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Unauthorized']);
+        return;
+    }
+    $token = substr($authHeader, 7);
+    $payload = verifyToken($token);
+    if (!$payload) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Invalid or expired token']);
+        return;
+    }
+    $db = Database::getInstance()->getConnection();
+    $stmt = $db->prepare("SELECT id, display_name as name, role FROM users WHERE id = :id");
+    $stmt->execute([':id' => $payload['user_id']]);
+    $user = $stmt->fetch();
+    
+    if (!$user) {
+        http_response_code(404);
+        echo json_encode(['error' => 'User not found']);
+        return;
+    }
+    
+    echo json_encode(['user' => $user]);
+}
+
+function resetPassword() {
+    requireJsonContentType();
+    checkRateLimit('resetPassword', 5, 300);
+    
+    $data = getJsonBody();
+    if (empty($data['token']) || empty($data['password'])) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Token and new password required']);
+        return;
+    }
+    
+    $db = Database::getInstance()->getConnection();
+    $stmt = $db->prepare("SELECT email FROM password_resets WHERE token = :token AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)");
+    $stmt->execute([':token' => $data['token']]);
+    $reset = $stmt->fetch();
+    
+    if (!$reset) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Invalid or expired token']);
+        return;
+    }
+    
+    $hash = password_hash($data['password'], PASSWORD_BCRYPT);
+    $updateStmt = $db->prepare("UPDATE users SET password_hash = :hash WHERE email = :email");
+    $updateStmt->execute([':hash' => $hash, ':email' => $reset['email']]);
+    
+    $delStmt = $db->prepare("DELETE FROM password_resets WHERE email = :email");
+    $delStmt->execute([':email' => $reset['email']]);
+    
+    logSecurity('PASSWORD_RESET', "Password reset for: " . $reset['email']);
+    echo json_encode(['message' => 'Password reset successfully']);
+}
+
+function getSitemapXml() {
+    header('Content-Type: application/xml; charset=utf-8');
+    $db = Database::getInstance()->getConnection();
+    global $frontend_url;
+    $baseUrl = rtrim($frontend_url, '/');
+    
+    $stmt = $db->query("SELECT slug, updated_at FROM articles WHERE status = 'published' ORDER BY updated_at DESC");
+    $articles = $stmt->fetchAll();
+    
+    echo '<?xml version="1.0" encoding="UTF-8"?>';
+    echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
+    
+    echo "<url><loc>$baseUrl/</loc><priority>1.0</priority></url>";
+    
+    foreach ($articles as $a) {
+        $date = date('Y-m-d', strtotime($a['updated_at']));
+        echo "<url><loc>$baseUrl/article/{$a['slug']}</loc><lastmod>$date</lastmod><priority>0.8</priority></url>";
+    }
+    echo '</urlset>';
+}
+
+function getRssXml() {
+    header('Content-Type: application/rss+xml; charset=utf-8');
+    $db = Database::getInstance()->getConnection();
+    global $frontend_url;
+    $baseUrl = rtrim($frontend_url, '/');
+    
+    $stmt = $db->query("SELECT a.*, u.display_name as author_name FROM articles a LEFT JOIN users u ON a.author_id = u.id WHERE a.status = 'published' ORDER BY a.published_at DESC LIMIT 20");
+    $articles = $stmt->fetchAll();
+    
+    echo '<?xml version="1.0" encoding="UTF-8"?>';
+    echo '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">';
+    echo '<channel>';
+    echo '<title>KBB Sadunia News</title>';
+    echo "<link>$baseUrl/</link>";
+    echo '<description>Berita dan Informasi Kerukunan Bubuhan Banjar Sadunia</description>';
+    echo "<atom:link href=\"$baseUrl/api/rss.xml\" rel=\"self\" type=\"application/rss+xml\" />";
+    
+    foreach ($articles as $a) {
+        $date = date(DATE_RSS, strtotime($a['published_at']));
+        $title = htmlspecialchars($a['title'], ENT_XML1);
+        $excerpt = htmlspecialchars($a['excerpt'] ?: strip_tags(substr($a['content'], 0, 150)), ENT_XML1);
+        $link = "$baseUrl/article/{$a['slug']}";
+        echo "<item>";
+        echo "<title>$title</title>";
+        echo "<link>$link</link>";
+        echo "<guid>$link</guid>";
+        echo "<pubDate>$date</pubDate>";
+        echo "<description>$excerpt</description>";
+        echo "</item>";
+    }
+    echo '</channel></rss>';
+}
+
+function getComments() {
+    $authHeader = getAuthHeader();
+    if (strpos($authHeader, 'Bearer ') !== 0) { http_response_code(401); echo json_encode(['error' => 'Unauthorized']); return; }
+    $token = substr($authHeader, 7);
+    $payload = verifyToken($token);
+    if (!$payload || !in_array($payload['role'], ['admin', 'editor'])) { http_response_code(403); echo json_encode(['error' => 'Forbidden']); return; }
+    
+    $db = Database::getInstance()->getConnection();
+    $stmt = $db->query("SELECT c.*, a.title as article_title FROM comments c LEFT JOIN articles a ON c.article_id = a.id ORDER BY c.created_at DESC");
+    echo json_encode(['data' => $stmt->fetchAll()]);
+}
+
+function updateCommentStatus($id) {
+    requireJsonContentType();
+    $authHeader = getAuthHeader();
+    if (strpos($authHeader, 'Bearer ') !== 0) { http_response_code(401); echo json_encode(['error' => 'Unauthorized']); return; }
+    $token = substr($authHeader, 7);
+    $payload = verifyToken($token);
+    if (!$payload || !in_array($payload['role'], ['admin', 'editor'])) { http_response_code(403); echo json_encode(['error' => 'Forbidden']); return; }
+    
+    $data = getJsonBody();
+    if (!isset($data['status']) || !in_array($data['status'], ['approved', 'pending'])) {
+        http_response_code(400); echo json_encode(['error' => 'Invalid status']); return;
+    }
+    
+    $db = Database::getInstance()->getConnection();
+    $stmt = $db->prepare("UPDATE comments SET status = :status WHERE id = :id");
+    $stmt->execute([':status' => $data['status'], ':id' => $id]);
+    echo json_encode(['message' => 'Comment status updated']);
+}
+
+function deleteComment($id) {
+    $authHeader = getAuthHeader();
+    if (strpos($authHeader, 'Bearer ') !== 0) { http_response_code(401); echo json_encode(['error' => 'Unauthorized']); return; }
+    $token = substr($authHeader, 7);
+    $payload = verifyToken($token);
+    if (!$payload || !in_array($payload['role'], ['admin', 'editor'])) { http_response_code(403); echo json_encode(['error' => 'Forbidden']); return; }
+    
+    $db = Database::getInstance()->getConnection();
+    $stmt = $db->prepare("DELETE FROM comments WHERE id = :id");
+    $stmt->execute([':id' => $id]);
+    echo json_encode(['message' => 'Comment deleted']);
 }
