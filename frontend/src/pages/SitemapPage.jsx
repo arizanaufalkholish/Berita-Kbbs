@@ -19,7 +19,7 @@ export default function SitemapPage() {
       }
     };
     fetchSitemap();
-  }, [apiGetSitemap]);
+  }, []);
 
   if (loading) {
     return (

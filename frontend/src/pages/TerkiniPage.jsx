@@ -23,7 +23,7 @@ export default function TerkiniPage() {
       }
     };
     fetchData();
-  }, [apiGetArticles, apiGetTrending]);
+  }, []);
 
   if (loading) {
     return (

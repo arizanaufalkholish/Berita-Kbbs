@@ -343,6 +343,12 @@ $routes = [
         '/api/upload' => 'uploadImage',
         '/api/forgot-password' => 'forgotPassword',
     ],
+    'PUT' => [
+        '/api/articles/(\d+)' => 'updateArticle',
+    ],
+    'DELETE' => [
+        '/api/articles/(\d+)' => 'deleteArticle',
+    ],
 ];
 
 // Match route
@@ -643,8 +649,59 @@ function forgotPassword() {
         return;
     }
     
-    // Dummy response for security (always return success to prevent email enumeration)
-    // Dalam implementasi nyata, di sini akan ada fungsi kirim email
+    $email = filter_var($data['email'], FILTER_SANITIZE_EMAIL);
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Invalid email format']);
+        return;
+    }
+    
+    $db = Database::getInstance()->getConnection();
+    $stmt = $db->prepare("SELECT id, display_name FROM users WHERE email = :email");
+    $stmt->execute([':email' => $email]);
+    $user = $stmt->fetch();
+    
+    if ($user) {
+        $token = bin2hex(random_bytes(32));
+        $expires = date('Y-m-d H:i:s', time() + 3600); // 1 jam
+        
+        // Buat tabel password_resets jika belum ada (opsional, diletakkan di init db idealnya)
+        try {
+            $db->exec("CREATE TABLE IF NOT EXISTS password_resets (
+                email VARCHAR(255) PRIMARY KEY,
+                token VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )");
+            
+            $stmt = $db->prepare("INSERT INTO password_resets (email, token, created_at) VALUES (:email, :token, NOW()) ON DUPLICATE KEY UPDATE token = :token, created_at = NOW()");
+            $stmt->execute([':email' => $email, ':token' => $token]);
+            
+            global $frontend_url;
+            $resetLink = rtrim($frontend_url, '/') . '/auth/reset-password?token=' . $token . '&email=' . urlencode($email);
+            
+            $to = $email;
+            $subject = "Reset Password - KBB Sadunia";
+            $message = "Halo " . $user['display_name'] . ",\n\n";
+            $message .= "Seseorang telah meminta untuk mereset kata sandi akun Anda.\n";
+            $message .= "Jika ini adalah Anda, silakan klik tautan berikut untuk mereset kata sandi:\n\n";
+            $message .= $resetLink . "\n\n";
+            $message .= "Tautan ini akan kedaluwarsa dalam 1 jam.\n";
+            $message .= "Jika Anda tidak meminta reset kata sandi, abaikan email ini.\n\n";
+            $message .= "Salam,\nTim KBB Sadunia";
+            
+            $headers = "From: noreply@hulusungai.news\r\n";
+            $headers .= "Reply-To: support@hulusungai.news\r\n";
+            $headers .= "X-Mailer: PHP/" . phpversion();
+            
+            @mail($to, $subject, $message, $headers);
+            logSecurity('FORGOT_PASSWORD', "Reset link sent to: $email");
+            
+        } catch (Exception $e) {
+            error_log("Reset password error: " . $e->getMessage());
+        }
+    }
+    
+    // Always return success to prevent email enumeration
     echo json_encode(['message' => 'Jika email Anda terdaftar, link reset password telah dikirimkan.']);
 }
 
@@ -808,6 +865,100 @@ function createArticle() {
 
     logSecurity('ARTICLE_CREATED', "New article: '$clean_title' (slug: $slug)");
     echo json_encode(['data' => ['id' => $db->lastInsertId(), 'slug' => $slug], 'message' => 'Article created']);
+}
+
+function updateArticle($id) {
+    requireJsonContentType();
+    $authHeader = getAuthHeader();
+    if (strpos($authHeader, 'Bearer ') !== 0) {
+        http_response_code(401); echo json_encode(['error' => 'Unauthorized']); return;
+    }
+    $token = substr($authHeader, 7);
+    $payload = verifyToken($token);
+    if (!$payload || !in_array($payload['role'], ['admin', 'author', 'editor'])) {
+        http_response_code(403); echo json_encode(['error' => 'Forbidden']); return;
+    }
+
+    $db = Database::getInstance()->getConnection();
+    // Validate article exists & ownership
+    $stmt = $db->prepare("SELECT author_id FROM articles WHERE id = :id");
+    $stmt->execute([':id' => $id]);
+    $article = $stmt->fetch();
+    if (!$article) {
+        http_response_code(404); echo json_encode(['error' => 'Article not found']); return;
+    }
+    if ($payload['role'] !== 'admin' && $article['author_id'] != $payload['user_id']) {
+        http_response_code(403); echo json_encode(['error' => 'Forbidden: You can only edit your own articles']); return;
+    }
+
+    $data = getJsonBody();
+    if (!$data || !isset($data['title'])) {
+        http_response_code(400); echo json_encode(['error' => 'Title is required']); return;
+    }
+
+    $clean_title = strip_tags($data['title']);
+    $clean_excerpt = strip_tags($data['excerpt'] ?? '');
+    
+    $autoloadPath = __DIR__ . '/../vendor/autoload.php';
+    if (file_exists($autoloadPath)) {
+        require_once $autoloadPath;
+        $config = HTMLPurifier_Config::createDefault();
+        $purifier = new HTMLPurifier($config);
+        $clean_content = $purifier->purify($data['content'] ?? '');
+    } else {
+        $allowed_tags = '<p><br><strong><em><ul><li><ol><h1><h2><h3><h4><h5><h6><blockquote><a><img>';
+        $clean_content = strip_tags($data['content'] ?? '', $allowed_tags);
+    }
+
+    $stmt = $db->prepare(
+        "UPDATE articles SET title = :title, excerpt = :excerpt, content = :content, 
+         image_url = :image, category_id = :cat, status = :status, featured = :featured, 
+         read_time = :read_time, updated_at = NOW() WHERE id = :id"
+    );
+    $stmt->execute([
+        ':title' => $clean_title,
+        ':excerpt' => $clean_excerpt,
+        ':content' => $clean_content,
+        ':image' => filter_var($data['image_url'] ?? '', FILTER_SANITIZE_URL),
+        ':cat' => $data['category_id'] ?? null,
+        ':status' => in_array($data['status'] ?? '', ['draft', 'published', 'archived']) ? $data['status'] : 'draft',
+        ':featured' => ($payload['role'] === 'admin') ? ($data['featured'] ?? false) : false,
+        ':read_time' => strip_tags($data['read_time'] ?? '5 menit'),
+        ':id' => $id
+    ]);
+
+    logSecurity('ARTICLE_UPDATED', "Article #$id updated by user {$payload['user_id']}");
+    echo json_encode(['message' => 'Article updated successfully']);
+}
+
+function deleteArticle($id) {
+    $authHeader = getAuthHeader();
+    if (strpos($authHeader, 'Bearer ') !== 0) {
+        http_response_code(401); echo json_encode(['error' => 'Unauthorized']); return;
+    }
+    $token = substr($authHeader, 7);
+    $payload = verifyToken($token);
+    if (!$payload || !in_array($payload['role'], ['admin', 'author', 'editor'])) {
+        http_response_code(403); echo json_encode(['error' => 'Forbidden']); return;
+    }
+
+    $db = Database::getInstance()->getConnection();
+    // Validate article exists & ownership
+    $stmt = $db->prepare("SELECT author_id FROM articles WHERE id = :id");
+    $stmt->execute([':id' => $id]);
+    $article = $stmt->fetch();
+    if (!$article) {
+        http_response_code(404); echo json_encode(['error' => 'Article not found']); return;
+    }
+    if ($payload['role'] !== 'admin' && $article['author_id'] != $payload['user_id']) {
+        http_response_code(403); echo json_encode(['error' => 'Forbidden: You can only delete your own articles']); return;
+    }
+
+    $stmt = $db->prepare("DELETE FROM articles WHERE id = :id");
+    $stmt->execute([':id' => $id]);
+
+    logSecurity('ARTICLE_DELETED', "Article #$id deleted by user {$payload['user_id']}");
+    echo json_encode(['message' => 'Article deleted successfully']);
 }
 
 function createComment() {

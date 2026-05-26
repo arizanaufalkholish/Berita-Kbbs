@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 import { apiGetCategories } from "../services/api";
 
 const CategoriesContext = createContext();
@@ -19,7 +19,7 @@ export function CategoriesProvider({ children }) {
       }
     };
     fetchCategories();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <CategoriesContext.Provider value={{ categories, loading }}>
@@ -28,6 +28,7 @@ export function CategoriesProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useCategories() {
   return useContext(CategoriesContext);
 }

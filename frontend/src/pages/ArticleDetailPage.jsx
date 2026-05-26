@@ -37,14 +37,14 @@ export default function ArticleDetailPage() {
         // Fetch more news
         const moreRes = await apiGetArticles("?per_page=5");
         setMoreNews(moreRes.data.filter(a => a.id !== res.data.id));
-      } catch (err) {
+      } catch {
         setError("Artikel tidak ditemukan");
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, [slug, apiGetArticleBySlug, apiGetArticles]);
+  }, [slug]);
 
   if (loading) {
     return (

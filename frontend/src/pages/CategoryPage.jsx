@@ -27,7 +27,7 @@ export default function CategoryPage() {
       }
     };
     fetchData();
-  }, [slug, apiGetArticles, apiGetCategories]);
+  }, [slug]);
 
   const category = categories.find((c) => c.slug === slug);
 

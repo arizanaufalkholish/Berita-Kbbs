@@ -25,10 +25,11 @@ export default function SearchPage() {
     if (query) {
       fetchResults();
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setResults([]);
       setLoading(false);
     }
-  }, [query, apiSearchArticles]);
+  }, [query]);
 
   if (loading) {
     return (

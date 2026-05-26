@@ -43,6 +43,9 @@ export const apiGetTrending = () => fetchAPI("/trending");
 export const apiGetCategories = () => fetchAPI("/categories");
 export const apiGetSitemap = () => fetchAPI("/sitemap");
 
+export const apiCreateArticle = (data) => fetchAPI("/articles", { method: "POST", body: JSON.stringify(data) });
+export const apiUpdateArticle = (id, data) => fetchAPI(`/articles/${id}`, { method: "PUT", body: JSON.stringify(data) });
+export const apiDeleteArticle = (id) => fetchAPI(`/articles/${id}`, { method: "DELETE" });
 // Comments API
 export const apiCreateComment = (articleId, name, email, content) => 
   fetchAPI("/comments", {

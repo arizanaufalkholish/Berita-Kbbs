@@ -28,6 +28,7 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", h);
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setMobileOpen(false); setOrgMenuOpen(false); }, [location]);
 
   const handleSearch = (e) => { e.preventDefault(); if (searchQuery.trim()) { navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`); } };

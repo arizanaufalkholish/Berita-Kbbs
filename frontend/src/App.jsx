@@ -30,6 +30,10 @@ import PelantikanPage from "./pages/PelantikanPage";
 import OpiniPage from "./pages/OpiniPage";
 import KegiatanKBBPage from "./pages/KegiatanKBBPage";
 import AdministrasiPage from "./pages/AdministrasiPage";
+import ProtectedRoute from "./components/ProtectedRoute";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import ManageArticles from "./pages/admin/ManageArticles";
+import ArticleEditor from "./pages/admin/ArticleEditor";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -75,6 +79,15 @@ export default function App() {
             <Route path="/tentang/opini" element={<OpiniPage />} />
             <Route path="/tentang/kegiatan" element={<KegiatanKBBPage />} />
             <Route path="/tentang/administrasi" element={<AdministrasiPage />} />
+            
+            {/* Admin Routes */}
+            <Route element={<ProtectedRoute allowedRoles={['admin', 'editor', 'author']} />}>
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/articles" element={<ManageArticles />} />
+              <Route path="/admin/articles/create" element={<ArticleEditor />} />
+              <Route path="/admin/articles/edit/:id" element={<ArticleEditor />} />
+            </Route>
+
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </main>

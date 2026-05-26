@@ -42,7 +42,7 @@ export default function HomePage() {
       }
     };
     fetchData();
-  }, [apiGetArticles, apiGetTrending, apiGetCategories]);
+  }, []);
 
   if (loading) {
     return (
