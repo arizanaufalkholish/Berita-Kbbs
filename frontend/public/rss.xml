@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>KBB SADUNIA — Portal Berita &amp; Artikel</title>
+    <link>https://kbb-banjarsadunia.com</link>
+    <description>Portal berita dan artikel terlengkap seputar Kerukunan Bubuhan Banjar (KBB) Sadunia.</description>
+    <language>id</language>
+    <lastBuildDate>Tue, 13 May 2026 00:00:00 +0700</lastBuildDate>
+    <atom:link href="https://kbb-banjarsadunia.com/rss.xml" rel="self" type="application/rss+xml"/>
+    <item>
+      <title>Banjir Bandang Terjang Hulu Sungai Tengah</title>
+      <link>https://kbb-banjarsadunia.com/article/banjir-bandang-hulu-sungai-tengah</link>
+      <description>Banjir bandang melanda sejumlah kecamatan di Kabupaten Hulu Sungai Tengah akibat hujan deras yang mengguyur selama 12 jam.</description>
+      <category>Sosial</category>
+      <pubDate>Tue, 13 May 2026 00:00:00 +0700</pubDate>
+      <guid>https://kbb-banjarsadunia.com/article/banjir-bandang-hulu-sungai-tengah</guid>
+    </item>
+    <item>
+      <title>Gubernur Kalsel Resmikan Jembatan Baru HSU-HST</title>
+      <link>https://kbb-banjarsadunia.com/article/gubernur-resmikan-jembatan-hsu-hst</link>
+      <description>Infrastruktur baru ini diharapkan mampu memperlancar arus transportasi dan mendorong pertumbuhan ekonomi.</description>
+      <category>Ekonomi</category>
+      <pubDate>Mon, 12 May 2026 00:00:00 +0700</pubDate>
+      <guid>https://kbb-banjarsadunia.com/article/gubernur-resmikan-jembatan-hsu-hst</guid>
+    </item>
+    <item>
+      <title>Festival Pasar Terapung 2026 Targetkan 50 Ribu Wisatawan</title>
+      <link>https://kbb-banjarsadunia.com/article/festival-pasar-terapung-2026</link>
+      <description>Pemerintah Provinsi Kalsel optimis event tahunan ini mampu meningkatkan kunjungan wisata.</description>
+      <category>Pariwisata</category>
+      <pubDate>Mon, 12 May 2026 00:00:00 +0700</pubDate>
+      <guid>https://kbb-banjarsadunia.com/article/festival-pasar-terapung-2026</guid>
+    </item>
+    <item>
+      <title>Soto Banjar Raih Juara 1 Kompetisi Kuliner Nusantara</title>
+      <link>https://kbb-banjarsadunia.com/article/soto-banjar-juara-kuliner-nusantara</link>
+      <description>Tim chef Kalimantan Selatan berhasil membawa Soto Banjar sebagai hidangan terbaik.</description>
+      <category>Budaya</category>
+      <pubDate>Sun, 11 May 2026 00:00:00 +0700</pubDate>
+      <guid>https://kbb-banjarsadunia.com/article/soto-banjar-juara-kuliner-nusantara</guid>
+    </item>
+  </channel>
+</rss>

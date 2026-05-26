@@ -1,0 +1,89 @@
+# ============================================
+# KBB Sadunia — Production .htaccess
+# Untuk public_html/ (frontend + backend tergabung)
+# ============================================
+
+ServerSignature Off
+Options -Indexes
+
+# ============================================
+# Security Headers
+# ============================================
+<IfModule mod_headers.c>
+    Header always unset X-Powered-By
+    Header unset X-Powered-By
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "DENY"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+</IfModule>
+
+# ============================================
+# GZIP Compression
+# ============================================
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css
+    AddOutputFilterByType DEFLATE text/javascript application/javascript application/json
+    AddOutputFilterByType DEFLATE text/xml application/xml application/rss+xml
+    AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>
+
+# ============================================
+# Browser Caching
+# ============================================
+<IfModule mod_expires.c>
+    ExpiresActive On
+    # Vite hashed assets — cache 1 tahun (hash berubah saat konten berubah)
+    ExpiresByType text/css "access plus 1 year"
+    ExpiresByType text/javascript "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/webp "access plus 1 month"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    ExpiresByType font/woff2 "access plus 1 year"
+    ExpiresByType application/font-woff2 "access plus 1 year"
+    # HTML — jangan cache terlalu lama
+    ExpiresByType text/html "access plus 0 seconds"
+    # JSON API — jangan cache
+    ExpiresByType application/json "access plus 0 seconds"
+</IfModule>
+
+# ============================================
+# Protect Sensitive Files & Directories
+# ============================================
+<FilesMatch "^\.env|\.log$|schema\.sql$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# ============================================
+# Rewrite Rules
+# ============================================
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Force HTTPS (uncomment di production jika hosting support SSL)
+    # RewriteCond %{HTTPS} off
+    # RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # Protect sensitive directories — return 403 Forbidden
+    RewriteRule ^(config|database|scripts|logs)/.*$ - [F,L]
+
+    # API requests — pass through ke api/ directory (dihandle api/.htaccess)
+    RewriteRule ^api/ - [L]
+
+    # Uploads — pass through (gambar yang diupload)
+    RewriteRule ^uploads/ - [L]
+
+    # File/folder yang benar-benar ada — serve langsung
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # SPA Fallback — semua request lain ke index.html (React Router)
+    RewriteRule ^ index.html [QSA,L]
+</IfModule>

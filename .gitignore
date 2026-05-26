@@ -1,0 +1,39 @@
+# Environment files (SECRETS - NEVER COMMIT)
+.env
+.env.*
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Node
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+
+# WordPress uploads & cache
+wp-content/uploads/
+wp-content/cache/
+wp-content/upgrade/
+
+# Database dumps
+*.sql.gz
+*.sql.bak
+
+# Backup files
+*.bak
+*.old
+*.orig
