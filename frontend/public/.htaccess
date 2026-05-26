@@ -67,8 +67,8 @@ Options -Indexes
     RewriteBase /
 
     # Force HTTPS (uncomment di production jika hosting support SSL)
-    # RewriteCond %{HTTPS} off
-    # RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+    RewriteCond %{HTTPS} off
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
     # Protect sensitive directories — return 403 Forbidden
     RewriteRule ^(config|database|scripts|logs)/.*$ - [F,L]

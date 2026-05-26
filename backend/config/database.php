@@ -27,10 +27,11 @@ loadEnv(__DIR__ . '/../.env');
 // Validasi: credentials HARUS di-set via .env (tidak ada fallback default)
 $requiredEnvVars = ['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASS', 'API_SECRET_KEY'];
 foreach ($requiredEnvVars as $var) {
-    if (!getenv($var)) {
+    $val = getenv($var);
+    if (!$val || strpos($val, 'GANTI_') === 0 || strpos($val, 'CHANGE_') === 0) {
         http_response_code(500);
-        error_log("[CRITICAL] Missing required env variable: $var — pastikan file .env terkonfigurasi");
-        echo json_encode(['error' => 'Server configuration error']);
+        error_log("[CRITICAL] Missing or placeholder env variable: $var — pastikan file .env dikonfigurasi dengan benar (bukan nilai default)");
+        echo json_encode(['error' => 'Server configuration error: Please setup .env correctly on the server.']);
         exit;
     }
 }

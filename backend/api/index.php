@@ -385,18 +385,7 @@ function healthCheck() {
         $status['status'] = 'degraded';
     }
     
-    // Check uploads directory
-    $uploadsDir = __DIR__ . '/../uploads/';
-    $status['uploads_writable'] = is_dir($uploadsDir) && is_writable($uploadsDir);
-    
-    // Check logs directory
-    $logsDir = __DIR__ . '/../../logs';
-    $status['logs_writable'] = is_dir($logsDir) && is_writable($logsDir);
-    
-    $status['php_version'] = PHP_VERSION;
-    $status['env'] = APP_ENV;
-    
-    echo json_encode($status, JSON_PRETTY_PRINT);
+    echo json_encode(['status' => $status['status'], 'timestamp' => $status['timestamp'], 'database' => $status['database'], 'tables' => $status['tables']], JSON_PRETTY_PRINT);
 }
 
 function getArticles() {
@@ -756,8 +745,18 @@ function createArticle() {
     // Server-side XSS sanitation
     $clean_title = strip_tags($data['title']);
     $clean_excerpt = strip_tags($data['excerpt'] ?? '');
-    $allowed_tags = '<p><br><strong><em><ul><li><ol><h1><h2><h3><h4><h5><h6><blockquote><a><img>';
-    $clean_content = strip_tags($data['content'] ?? '', $allowed_tags);
+    
+    // Gunakan HTMLPurifier jika tersedia via Composer, jika tidak fallback
+    $autoloadPath = __DIR__ . '/../vendor/autoload.php';
+    if (file_exists($autoloadPath)) {
+        require_once $autoloadPath;
+        $config = HTMLPurifier_Config::createDefault();
+        $purifier = new HTMLPurifier($config);
+        $clean_content = $purifier->purify($data['content'] ?? '');
+    } else {
+        $allowed_tags = '<p><br><strong><em><ul><li><ol><h1><h2><h3><h4><h5><h6><blockquote><a><img>';
+        $clean_content = strip_tags($data['content'] ?? '', $allowed_tags);
+    }
 
     $stmt = $db->prepare(
         "INSERT INTO articles (title, slug, excerpt, content, image_url, category_id, author_id, status, featured, read_time, published_at)
