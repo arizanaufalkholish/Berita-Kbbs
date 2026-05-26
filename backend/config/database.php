@@ -28,9 +28,9 @@ loadEnv(__DIR__ . '/../.env');
 $requiredEnvVars = ['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASS', 'API_SECRET_KEY'];
 foreach ($requiredEnvVars as $var) {
     $val = getenv($var);
-    if (!$val || strpos($val, 'GANTI_') === 0 || strpos($val, 'CHANGE_') === 0) {
+    if (!$val || ($var === 'API_SECRET_KEY' && strlen($val) < 32) || strpos($val, 'GANTI_') === 0 || strpos($val, 'CHANGE_') === 0) {
         http_response_code(500);
-        error_log("[CRITICAL] Missing or placeholder env variable: $var — pastikan file .env dikonfigurasi dengan benar (bukan nilai default)");
+        error_log("[CRITICAL] Missing, weak, or placeholder env variable: $var — pastikan file .env dikonfigurasi dengan benar (bukan nilai default dan API_SECRET_KEY minimal 32 karakter)");
         echo json_encode(['error' => 'Server configuration error: Please setup .env correctly on the server.']);
         exit;
     }

@@ -71,6 +71,7 @@ header("Access-Control-Allow-Origin: $frontend_url");
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-CSRF-Token');
 header('Access-Control-Allow-Credentials: true');
+header("Content-Security-Policy: default-src 'none'; frame-ancestors 'none'");
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -112,6 +113,13 @@ function requireJsonContentType() {
         echo json_encode(['error' => 'Content-Type must be application/json']);
         exit;
     }
+}
+
+/**
+ * Helper to get JSON body
+ */
+function getJsonBody() {
+    return json_decode(file_get_contents('php://input'), true) ?? [];
 }
 
 /**
@@ -333,6 +341,7 @@ $routes = [
         '/api/logout' => 'logoutUser',
         '/api/register' => 'registerUser',
         '/api/upload' => 'uploadImage',
+        '/api/forgot-password' => 'forgotPassword',
     ],
 ];
 
@@ -450,7 +459,7 @@ function getArticles() {
 
 function getArticle($id) {
     $db = Database::getInstance()->getConnection();
-    $stmt = $db->prepare("UPDATE articles SET views = views + 1 WHERE id = :id");
+    $stmt = $db->prepare("UPDATE articles SET views = views + 1 WHERE id = :id AND status = 'published'");
     $stmt->execute([':id' => $id]);
 
     $stmt = $db->prepare(
@@ -492,6 +501,11 @@ function getArticleBySlug($slug) {
     );
     $stmt->execute([':slug' => $slug]);
     $article = $stmt->fetch();
+
+    if ($article && $article['status'] === 'published') {
+        $updateStmt = $db->prepare("UPDATE articles SET views = views + 1 WHERE id = :id");
+        $updateStmt->execute([':id' => $article['id']]);
+    }
 
     if (!$article) {
         http_response_code(404);
@@ -615,6 +629,23 @@ function loginUser() {
         http_response_code(401);
         echo json_encode(['error' => 'Invalid credentials']);
     }
+}
+
+function forgotPassword() {
+    requireJsonContentType();
+    // Rate limit: max 3 per menit untuk mencegah spam
+    checkRateLimit('forgotPassword', 3, 60); 
+    
+    $data = getJsonBody();
+    if (empty($data['email'])) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Email is required']);
+        return;
+    }
+    
+    // Dummy response for security (always return success to prevent email enumeration)
+    // Dalam implementasi nyata, di sini akan ada fungsi kirim email
+    echo json_encode(['message' => 'Jika email Anda terdaftar, link reset password telah dikirimkan.']);
 }
 
 function logoutUser() {
