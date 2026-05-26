@@ -8,25 +8,26 @@ export default function ManageArticles() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchArticles();
+    let ignore = false;
+    (async () => {
+      try {
+        const res = await apiGetArticles("?per_page=100");
+        if (!ignore) setArticles(res.data || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    })();
+    return () => { ignore = true; };
   }, []);
-
-  const fetchArticles = async () => {
-    try {
-      const res = await apiGetArticles("?per_page=100"); // fetch all for simple admin
-      setArticles(res.data || []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleDelete = async (id, title) => {
     if (window.confirm(`Yakin ingin menghapus artikel "${title}"?`)) {
       try {
         await apiDeleteArticle(id);
-        fetchArticles();
+        const res = await apiGetArticles("?per_page=100");
+        setArticles(res.data || []);
       } catch (err) {
         alert("Gagal menghapus artikel: " + err.message);
       }

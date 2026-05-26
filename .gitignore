@@ -37,3 +37,7 @@ wp-content/upgrade/
 *.bak
 *.old
 *.orig
+
+# WhatsApp & stray media files
+WhatsApp Image*
+*.pdf

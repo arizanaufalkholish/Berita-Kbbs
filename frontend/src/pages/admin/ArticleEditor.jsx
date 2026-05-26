@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { apiGetArticleBySlug, apiGetArticles, apiCreateArticle, apiUpdateArticle, apiGetCategories } from "../../services/api";
+import { apiCreateArticle, apiUpdateArticle, apiGetCategories } from "../../services/api";
 import { Helmet } from "react-helmet-async";
 
 export default function ArticleEditor() {
