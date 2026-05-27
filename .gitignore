@@ -41,3 +41,4 @@ wp-content/upgrade/
 # WhatsApp & stray media files
 WhatsApp Image*
 *.pdf
+*.zip

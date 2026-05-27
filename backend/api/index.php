@@ -183,6 +183,19 @@ function validateCSRFToken() {
     if (!in_array($method, ['POST', 'PUT', 'DELETE'])) {
         return true;
     }
+
+    $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+    $excluded_endpoints = [
+        '/api/login',
+        '/api/register',
+        '/api/forgot-password',
+        '/api/reset-password',
+        '/api/upload'
+    ];
+    if (in_array($uri, $excluded_endpoints)) {
+        return true;
+    }
+
     
     // 1. Cek Origin/Referer header sebagai first layer defense
     global $frontend_url; // Use global frontend_url calculated at the top
@@ -414,13 +427,48 @@ function healthCheck() {
 function getArticles() {
     $db = Database::getInstance()->getConnection();
     $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-    $perPage = isset($_GET['per_page']) ? min(50, max(1, (int)$_GET['per_page'])) : 10;
+    $perPage = isset($_GET['per_page']) ? min(100, max(1, (int)$_GET['per_page'])) : 10;
     $category = $_GET['category'] ?? null;
     $search = $_GET['search'] ?? null;
+    $statusFilter = $_GET['status'] ?? 'published';
     $offset = ($page - 1) * $perPage;
 
-    $where = "WHERE a.status = 'published'";
+    // Check auth for getting non-published articles
+    $isAdminOrAuthor = false;
+    $userId = null;
+    $role = null;
+    
+    $authHeader = getAuthHeader();
+    if (strpos($authHeader, 'Bearer ') === 0) {
+        $token = substr($authHeader, 7);
+        $payload = verifyToken($token);
+        if ($payload) {
+            $userId = $payload['user_id'];
+            $role = $payload['role'];
+            if (in_array($role, ['admin', 'editor', 'author'])) {
+                $isAdminOrAuthor = true;
+            }
+        }
+    }
+    
+    if ($statusFilter !== 'published' && !$isAdminOrAuthor) {
+        $statusFilter = 'published';
+    }
+    
     $bindParams = [];
+    if ($statusFilter === 'all') {
+        if ($role === 'admin' || $role === 'editor') {
+            $where = "WHERE 1=1";
+        } else if ($role === 'author') {
+            $where = "WHERE a.status = 'published' OR a.author_id = :current_user_id";
+            $bindParams[':current_user_id'] = $userId;
+        } else {
+            $where = "WHERE a.status = 'published'";
+        }
+    } else {
+        $where = "WHERE a.status = :status";
+        $bindParams[':status'] = $statusFilter;
+    }
 
     if ($category) {
         $where .= " AND c.slug = :category";
@@ -493,6 +541,25 @@ function getArticle($id) {
         return;
     }
 
+    if ($article['status'] !== 'published') {
+        $authHeader = getAuthHeader();
+        $isAuthorized = false;
+        if (strpos($authHeader, 'Bearer ') === 0) {
+            $token = substr($authHeader, 7);
+            $payload = verifyToken($token);
+            if ($payload) {
+                if (in_array($payload['role'], ['admin', 'editor']) || $payload['user_id'] == $article['author_id']) {
+                    $isAuthorized = true;
+                }
+            }
+        }
+        if (!$isAuthorized) {
+            http_response_code(404); // Return 404 to hide existence of draft
+            echo json_encode(['error' => 'Article not found']);
+            return;
+        }
+    }
+
     // Get tags
     $tagStmt = $db->prepare(
         "SELECT t.name FROM tags t JOIN article_tags at2 ON t.id = at2.tag_id WHERE at2.article_id = :id"
@@ -525,6 +592,25 @@ function getArticleBySlug($slug) {
         http_response_code(404);
         echo json_encode(['error' => 'Article not found']);
         return;
+    }
+
+    if ($article['status'] !== 'published') {
+        $authHeader = getAuthHeader();
+        $isAuthorized = false;
+        if (strpos($authHeader, 'Bearer ') === 0) {
+            $token = substr($authHeader, 7);
+            $payload = verifyToken($token);
+            if ($payload) {
+                if (in_array($payload['role'], ['admin', 'editor']) || $payload['user_id'] == $article['author_id']) {
+                    $isAuthorized = true;
+                }
+            }
+        }
+        if (!$isAuthorized) {
+            http_response_code(404); // Return 404 to hide existence of draft
+            echo json_encode(['error' => 'Article not found']);
+            return;
+        }
     }
 
     echo json_encode(['data' => $article]);

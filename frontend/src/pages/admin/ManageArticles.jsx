@@ -11,7 +11,7 @@ export default function ManageArticles() {
     let ignore = false;
     (async () => {
       try {
-        const res = await apiGetArticles("?per_page=100");
+        const res = await apiGetArticles("?per_page=100&status=all");
         if (!ignore) setArticles(res.data || []);
       } catch (err) {
         console.error(err);
@@ -26,7 +26,7 @@ export default function ManageArticles() {
     if (window.confirm(`Yakin ingin menghapus artikel "${title}"?`)) {
       try {
         await apiDeleteArticle(id);
-        const res = await apiGetArticles("?per_page=100");
+        const res = await apiGetArticles("?per_page=100&status=all");
         setArticles(res.data || []);
       } catch (err) {
         alert("Gagal menghapus artikel: " + err.message);

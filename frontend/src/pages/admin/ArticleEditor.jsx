@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { apiCreateArticle, apiUpdateArticle, apiGetCategories } from "../../services/api";
+import { apiCreateArticle, apiUpdateArticle, apiGetCategories, apiUploadImage } from "../../services/api";
 import { Helmet } from "react-helmet-async";
 
 export default function ArticleEditor() {
@@ -13,6 +13,7 @@ export default function ArticleEditor() {
   });
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(isEdit);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     apiGetCategories().then(res => setCategories(res.data || []));
@@ -59,6 +60,21 @@ export default function ArticleEditor() {
     }
   };
 
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const res = await apiUploadImage(file);
+      setFormData(prev => ({ ...prev, image_url: res.url }));
+      alert("Gambar berhasil diunggah");
+    } catch (err) {
+      alert("Gagal mengunggah gambar: " + err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   if (loading) return <div className="p-8">Memuat...</div>;
 
   return (
@@ -92,9 +108,16 @@ export default function ArticleEditor() {
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-surface-700 mb-1">URL Gambar Header</label>
-            <input type="url" value={formData.image_url} onChange={e => setFormData({...formData, image_url: e.target.value})}
-                   className="w-full p-2 border border-surface-300 rounded focus:ring-primary-500 focus:border-primary-500" placeholder="https://..." />
+            <label className="block text-sm font-bold text-surface-700 mb-1">Gambar Header</label>
+            <div className="flex gap-2 items-center">
+              <input type="url" value={formData.image_url} onChange={e => setFormData({...formData, image_url: e.target.value})}
+                     className="flex-1 p-2 border border-surface-300 rounded focus:ring-primary-500 focus:border-primary-500" placeholder="https://..." />
+              <span className="text-sm text-surface-500 font-bold">ATAU</span>
+              <label className="cursor-pointer px-4 py-2 bg-surface-200 text-surface-800 rounded font-semibold hover:bg-surface-300 whitespace-nowrap">
+                {uploading ? "Mengunggah..." : "Upload File"}
+                <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageUpload} disabled={uploading} />
+              </label>
+            </div>
           </div>
 
           <div>

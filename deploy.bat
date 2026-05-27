@@ -88,6 +88,20 @@ echo       Dependencies: OK
 echo.
 
 :: ============================================
+:: Step 3.5: Install dependencies backend
+:: ============================================
+echo [3.5/7] Menginstall dependencies backend (composer)...
+cd /d "%BACKEND%"
+call composer install --no-dev --optimize-autoloader
+if %errorlevel% neq 0 (
+    echo WARNING: composer install gagal atau composer tidak terinstall!
+    echo          Sanitasi HTML (HTMLPurifier) mungkin tidak bekerja maksimal.
+) else (
+    echo       Backend Dependencies: OK
+)
+echo.
+
+:: ============================================
 :: Step 4: Build frontend
 :: ============================================
 echo [4/7] Mem-build frontend (npm run build)...
@@ -127,6 +141,12 @@ xcopy "%BACKEND%\database\*" "%DEPLOY%\public_html\database\" /E /I /Q /Y >nul
 :: Copy backend scripts
 mkdir "%DEPLOY%\public_html\scripts"
 xcopy "%BACKEND%\scripts\*" "%DEPLOY%\public_html\scripts\" /E /I /Q /Y >nul
+
+:: Copy backend vendor (jika ada)
+if exist "%BACKEND%\vendor\" (
+    mkdir "%DEPLOY%\public_html\vendor"
+    xcopy "%BACKEND%\vendor\*" "%DEPLOY%\public_html\vendor\" /E /I /Q /Y >nul
+)
 
 :: Copy uploads folder with .htaccess
 mkdir "%DEPLOY%\public_html\uploads"
